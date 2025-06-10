@@ -53,20 +53,8 @@ class Game {
             targetFPS: 60,
             difficulty: 1,
             currentLevel: 1,
-            debug: false // 强制默认关闭调试模式
+            debug: false // 默认关闭调试模式
         };
-        
-        // 清理可能存在的旧调试设置，确保调试模式默认关闭
-        try {
-            const settings = JSON.parse(localStorage.getItem('planewar_settings') || '{}');
-            if (settings.debug === true) {
-                settings.debug = false;
-                localStorage.setItem('planewar_settings', JSON.stringify(settings));
-                console.log('已重置调试模式为关闭状态');
-            }
-        } catch (error) {
-            console.warn('清理调试设置时出错:', error);
-        }
 
         // 消息系统
         this.messages = [];
@@ -267,11 +255,6 @@ class Game {
         const musicVolumeSlider = document.getElementById('musicVolume');
         const debugModeCheckbox = document.getElementById('debugMode');
         
-        // 确保调试模式复选框默认未勾选
-        if (debugModeCheckbox) {
-            debugModeCheckbox.checked = false;
-        }
-        
         // 加载保存的设置
         this.loadSettings();
         
@@ -309,11 +292,12 @@ class Game {
             
             // 读取调试模式设置，默认关闭
             const debugModeCheckbox = document.getElementById('debugMode');
-            
-            // 始终确保调试模式默认为false
-            this.config.debug = settings.debug === true ? true : false;
-            
-            // 确保复选框状态与配置同步
+            if (settings.debug !== undefined) {
+                this.config.debug = settings.debug;
+            } else {
+                // 如果没有保存的设置，使用默认值（false）
+                this.config.debug = false;
+            }
             if (debugModeCheckbox) {
                 debugModeCheckbox.checked = this.config.debug;
             }
