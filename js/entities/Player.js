@@ -11,12 +11,13 @@ class Player extends GameObject {
         this.maxSpeed = 250;
         this.color = '#00ff00';
         
-        // 血量系统
-        this.maxHp = 100; // 最大血量100点
+        // 血量系统 - 根据配置设置
+        const gameConfig = window.game?.config || { playerLives: 1 };
+        this.maxHp = 100; // 每条命100点血量
         this.hp = this.maxHp; // 当前血量
         
-        // 生命值系统
-        this.maxLives = 3;
+        // 生命值系统 - 根据设置配置
+        this.maxLives = gameConfig.playerLives;
         this.lives = this.maxLives;
         this.invulnerable = false;
         this.invulnerabilityTime = 2; // 无敌时间（秒）
@@ -73,6 +74,10 @@ class Player extends GameObject {
         
         // 初始化僚机
         this.initWingmen();
+        
+        // 图片渲染设置
+        this.useImageRender = true; // 是否使用图片渲染
+        this.imageName = 'player'; // 默认图片名称
     }
 
     /**
@@ -479,7 +484,7 @@ class Player extends GameObject {
         
         // 检查护盾
         if (this.hasShield) {
-            this.hasShield = false;
+            // 护盾阻挡伤害，但不移除护盾（护盾有时间限制）
             // 显示护盾阻挡消息
             if (window.game) {
                 window.game.showMessage("护盾阻挡！", 1500);
@@ -497,7 +502,7 @@ class Player extends GameObject {
                 });
             }
             
-            console.log('护盾阻挡了攻击');
+            console.log(`护盾阻挡了攻击，剩余护盾时间: ${this.shieldTimer.toFixed(1)}秒`);
             return false;
         }
         
@@ -577,7 +582,7 @@ class Player extends GameObject {
      * 复活处理
      */
     revive() {
-        console.log('玩家复活！获得5秒护盾保护');
+        console.log(`玩家复活！获得5秒护盾保护，血量恢复至${this.maxHp}点`);
         
         // 恢复血量
         this.hp = this.maxHp;
@@ -932,6 +937,32 @@ class Player extends GameObject {
      * 绘制玩家主体
      */
     drawPlayerBody(ctx) {
+        // 尝试使用图片渲染
+        if (this.useImageRender) {
+            const imageManager = window.ImageManager?.getInstance();
+            if (imageManager && imageManager.loaded) {
+                // 根据血量状态选择不同图片
+                let imageName = this.imageName;
+                if (this.hp < this.maxHp * 0.3 && imageManager.hasImage('player_damaged')) {
+                    imageName = 'player_damaged';
+                }
+                
+                const success = imageManager.drawImage(
+                    ctx, 
+                    imageName, 
+                    0, 0, 
+                    this.width, this.height,
+                    0, // 旋转角度
+                    false, false // 翻转
+                );
+                
+                if (success) {
+                    return; // 图片渲染成功，直接返回
+                }
+            }
+        }
+        
+        // 图片渲染失败或未开启，使用原始几何图形渲染
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
         
@@ -1139,6 +1170,10 @@ class Player extends GameObject {
      * 重置玩家状态
      */
     reset() {
+        // 根据当前游戏配置重新设置生命数量
+        const gameConfig = window.game?.config || { playerLives: 1 };
+        this.maxLives = gameConfig.playerLives;
+        
         this.hp = this.maxHp; // 重置血量
         this.lives = this.maxLives;
         this.score = 0;

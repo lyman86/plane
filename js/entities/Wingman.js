@@ -32,6 +32,10 @@ class Wingman {
         // AI属性
         this.target = null; // 当前攻击目标
         this.targetScanRange = 200; // 目标扫描范围
+        
+        // 图片渲染设置
+        this.useImageRender = true;
+        this.imageName = 'wingman';
     }
 
     /**
@@ -217,6 +221,26 @@ class Wingman {
      * 绘制僚机主体
      */
     drawBody(ctx) {
+        // 尝试使用图片渲染
+        if (this.useImageRender) {
+            const imageManager = window.ImageManager?.getInstance();
+            if (imageManager && imageManager.loaded) {
+                const success = imageManager.drawImage(
+                    ctx, 
+                    this.imageName, 
+                    0, 0, 
+                    this.width, this.height,
+                    0, // 旋转角度
+                    false, false // 翻转
+                );
+                
+                if (success) {
+                    return; // 图片渲染成功，直接返回
+                }
+            }
+        }
+        
+        // 图片渲染失败或未开启，使用原始几何图形渲染
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
         

@@ -58,7 +58,11 @@ class Enemy extends GameObject {
         // 新增属性
         this.isDestroyed = false;
         this.destroyReason = null; // 销毁原因: 'defeated' - 被击败, 'outOfBounds' - 飞出边界
-        this.alertLevel = 0; // 警戒等级
+        this.alertLevel = 0;
+        
+        // 图片渲染设置
+        this.useImageRender = true; // 是否使用图片渲染
+        this.imageName = 'enemy_basic'; // 默认图片名称 // 警戒等级
         this.evasionCooldown = 0; // 规避冷却
         this.lastEvasionTime = 0;
     }
@@ -112,6 +116,7 @@ class Enemy extends GameObject {
                 this.aggroRange = 200;
                 this.aimAccuracy = 0.3;
                 this.isAggressive = true;
+                this.imageName = 'enemy_scout';
                 break;
                 
             case 'fighter':
@@ -126,6 +131,7 @@ class Enemy extends GameObject {
                 this.shootInterval = 3.0;
                 this.aimAccuracy = 0.6;
                 this.burstCount = 1;
+                this.imageName = 'enemy_fighter';
                 break;
                 
             case 'heavy':
@@ -141,6 +147,7 @@ class Enemy extends GameObject {
                 this.aimAccuracy = 0.4;
                 this.burstCount = 3;
                 this.burstDelay = 0.15;
+                this.imageName = 'enemy_heavy';
                 break;
                 
             case 'elite':
@@ -158,6 +165,7 @@ class Enemy extends GameObject {
                 this.burstCount = 5;
                 this.burstDelay = 0.1;
                 this.isAggressive = true;
+                this.imageName = 'enemy_elite';
                 break;
 
             case 'interceptor':
@@ -175,6 +183,7 @@ class Enemy extends GameObject {
                 this.burstDelay = 0.2;
                 this.isAggressive = true;
                 this.aggroRange = 250;
+                this.imageName = 'enemy_interceptor';
                 break;
 
             case 'bomber':
@@ -190,6 +199,7 @@ class Enemy extends GameObject {
                 this.aimAccuracy = 0.9;
                 this.burstCount = 1;
                 this.dropChance = 0.4;
+                this.imageName = 'enemy_bomber';
                 break;
                 
             default: // basic
@@ -202,6 +212,7 @@ class Enemy extends GameObject {
                 this.color = '#ff4444';
                 this.canShoot = false;
                 this.aimAccuracy = 0.5;
+                this.imageName = 'enemy_basic';
                 break;
         }
     }
@@ -785,6 +796,26 @@ class Enemy extends GameObject {
      * 根据类型渲染
      */
     renderByType(ctx) {
+        // 尝试使用图片渲染
+        if (this.useImageRender) {
+            const imageManager = window.ImageManager?.getInstance();
+            if (imageManager && imageManager.loaded) {
+                const success = imageManager.drawImage(
+                    ctx, 
+                    this.imageName, 
+                    0, 0, 
+                    this.width, this.height,
+                    this.rotation, // 使用敌机的旋转角度
+                    false, false // 翻转
+                );
+                
+                if (success) {
+                    return; // 图片渲染成功，直接返回
+                }
+            }
+        }
+        
+        // 图片渲染失败或未开启，使用原始几何图形渲染
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
         
@@ -1053,13 +1084,13 @@ class EnemySpawner {
         
         // 不同类型的生成概率
         this.spawnProbabilities = {
-            scout: 0.25,
-            basic: 0.25,
+            scout: 0.2,
+            basic: 0.2,
             fighter: 0.2,
             interceptor: 0.15,
-            heavy: 0.08,
-            bomber: 0.05,
-            elite: 0.02
+            heavy: 0.12,
+            bomber: 0.1,  // 增加轰炸机出现概率
+            elite: 0.03
         };
     }
 

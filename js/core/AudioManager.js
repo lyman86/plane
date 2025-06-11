@@ -497,6 +497,12 @@ class AudioManager {
                 return;
             }
             
+            // 如果正在播放相同的音乐，不重复播放
+            if (this.currentMusic === name && musicData.isPlaying) {
+                console.log(`背景音乐 ${name} 已在播放，跳过`);
+                return;
+            }
+            
             // 停止当前音乐
             if (this.currentMusic && this.currentMusic !== name) {
                 await this.stopMusic(true);
@@ -545,10 +551,14 @@ class AudioManager {
         
         const musicData = this.music.get(this.currentMusic);
         if (musicData && musicData.source && musicData.isPlaying) {
-            if (fadeOut && musicData.gainNode) {
-                await this.fadeOutMusicGain(musicData.gainNode, musicData.source);
-            } else {
-                musicData.source.stop();
+            try {
+                if (fadeOut && musicData.gainNode) {
+                    await this.fadeOutMusicGain(musicData.gainNode, musicData.source);
+                } else {
+                    musicData.source.stop();
+                }
+            } catch (error) {
+                console.warn('停止音乐时出错:', error);
             }
             
             musicData.isPlaying = false;
@@ -556,6 +566,7 @@ class AudioManager {
             musicData.gainNode = null;
         }
         
+        console.log(`停止背景音乐: ${this.currentMusic}`);
         this.currentMusic = null;
     }
 

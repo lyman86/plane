@@ -21,6 +21,7 @@ class Game {
         this.stateManager = GameStateManager.getInstance();
         // 延迟创建AudioManager，让界面先显示
         this.audioManager = null;
+        this.imageManager = ImageManager.getInstance();
         this.particleSystem = new ParticleSystem();
         this.achievementManager = new AchievementManager();
         
@@ -53,7 +54,8 @@ class Game {
             targetFPS: 60,
             difficulty: 1,
             currentLevel: 1,
-            debug: false // 默认关闭调试模式
+            debug: false, // 默认关闭调试模式
+            playerLives: 1 // 默认1条命
         };
 
         // 消息系统
@@ -91,10 +93,16 @@ class Game {
         // 先进入加载状态，等待音频初始化完成
         this.stateManager.changeState(GameState.LOADING);
         
-        // 延迟创建音频管理器，确保加载界面先显示
+        // 延迟创建音频管理器并加载图片资源，确保加载界面先显示
         setTimeout(() => {
             console.log('开始创建音频管理器和初始化音频系统');
             this.audioManager = AudioManager.getInstance();
+            
+            // 同时开始加载图片资源
+            console.log('开始加载图片资源');
+            this.imageManager.loadAllImages().then(() => {
+                console.log('图片资源加载完成');
+            });
         }, 300); // 300ms后开始音频初始化
         
         // 开始游戏循环
@@ -254,6 +262,7 @@ class Game {
         const soundVolumeSlider = document.getElementById('soundVolume');
         const musicVolumeSlider = document.getElementById('musicVolume');
         const debugModeCheckbox = document.getElementById('debugMode');
+        const playerLivesSelect = document.getElementById('playerLives');
         
         // 加载保存的设置
         this.loadSettings();
@@ -272,6 +281,12 @@ class Game {
             this.config.debug = e.target.checked;
             this.saveSettings();
         });
+        
+        playerLivesSelect?.addEventListener('change', (e) => {
+            this.config.playerLives = parseInt(e.target.value);
+            this.saveSettings();
+            console.log(`设置玩家生命数量为: ${this.config.playerLives}条命`);
+        });
     }
 
     /**
@@ -280,15 +295,6 @@ class Game {
     loadSettings() {
         try {
             const settings = JSON.parse(localStorage.getItem('planewar_settings') || '{}');
-            
-            // 应用调试模式设置（强制开启用于Boss测试）
-            // if (settings.debug !== undefined) {
-            //     this.config.debug = settings.debug;
-            //     const debugModeCheckbox = document.getElementById('debugMode');
-            //     if (debugModeCheckbox) {
-            //         debugModeCheckbox.checked = this.config.debug;
-            //     }
-            // }
             
             // 读取调试模式设置，默认关闭
             const debugModeCheckbox = document.getElementById('debugMode');
@@ -300,6 +306,18 @@ class Game {
             }
             if (debugModeCheckbox) {
                 debugModeCheckbox.checked = this.config.debug;
+            }
+            
+            // 读取生命数量设置，默认1条命
+            const playerLivesSelect = document.getElementById('playerLives');
+            if (settings.playerLives !== undefined) {
+                this.config.playerLives = parseInt(settings.playerLives);
+            } else {
+                // 如果没有保存的设置，使用默认值（1条命）
+                this.config.playerLives = 1;
+            }
+            if (playerLivesSelect) {
+                playerLivesSelect.value = this.config.playerLives.toString();
             }
             
             // 应用音量设置（仅在audioManager存在时）
@@ -342,6 +360,7 @@ class Game {
         try {
             const settings = {
                 debug: this.config.debug,
+                playerLives: this.config.playerLives || 1,
                 soundVolume: document.getElementById('soundVolume')?.value || 50,
                 musicVolume: document.getElementById('musicVolume')?.value || 30,
                 controlType: document.getElementById('controlType')?.value || 'keyboard'
@@ -430,29 +449,29 @@ class Game {
         console.log('开始新游戏');
         
         try {
-            // 立即切换到游戏状态，避免UI卡顿
+            // 先停止当前背景音乐，避免重复播放
+            if (this.audioManager) {
+                this.audioManager.stopMusic(false);
+            }
+            
+            // 重置游戏状态
+            this.reset();
+            
+            // 初始化成就系统
+            this.achievementManager.startNewGame();
+            
+            // 立即创建玩家，确保游戏状态正确
+            this.createPlayer();
+            
+            // 切换到游戏状态
             this.stateManager.changeState(GameState.PLAYING);
             
-            // 异步执行游戏初始化，避免阻塞UI
-            setTimeout(() => {
-                try {
-                    // 重置游戏状态
-                    this.reset();
-                    
-                    // 初始化成就系统
-                    this.achievementManager.startNewGame();
-                    
-                    // 创建玩家
-                    this.createPlayer();
-                    
-                    // 播放游戏开始音效
-                    this.audioManager.playSound('game_start', 0.8);
-                    
-                    console.log('新游戏启动成功');
-                } catch (error) {
-                    console.error('游戏初始化失败:', error);
-                }
-            }, 50); // 延迟50ms执行初始化
+            // 播放游戏开始音效
+            if (this.audioManager) {
+                this.audioManager.playSound('game_start', 0.8);
+            }
+            
+            console.log('新游戏启动成功，玩家已创建');
             
         } catch (error) {
             console.error('启动新游戏失败:', error);

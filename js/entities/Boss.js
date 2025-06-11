@@ -28,6 +28,10 @@ class Boss extends GameObject {
         this.maxPhases = 3;
         this.attackTimer = 0;
         this.attackCooldown = 2.0; // 2秒攻击间隔
+        
+        // 图片渲染设置
+        this.useImageRender = true;
+        this.imageName = 'boss_standard'; // 默认Boss图片
         this.specialAttackTimer = 0;
         this.specialAttackCooldown = 8.0; // 8秒特殊攻击间隔
         this.invulnerableTimer = 0; // 无敌时间
@@ -124,6 +128,9 @@ class Boss extends GameObject {
         
         // 根据Boss类型调整属性
         this.setBossType(bossType);
+        
+        // 设置Boss图片
+        this.imageName = `boss_${bossType}`;
     }
     
     /**
@@ -725,6 +732,26 @@ class Boss extends GameObject {
      * 渲染Boss主体
      */
     renderBossBody(ctx) {
+        // 尝试使用图片渲染
+        if (this.useImageRender) {
+            const imageManager = window.ImageManager?.getInstance();
+            if (imageManager && imageManager.loaded) {
+                const success = imageManager.drawImage(
+                    ctx, 
+                    this.imageName, 
+                    this.x, this.y, 
+                    this.width, this.height,
+                    0, // 旋转角度
+                    false, false // 翻转
+                );
+                
+                if (success) {
+                    return; // 图片渲染成功，直接返回
+                }
+            }
+        }
+        
+        // 图片渲染失败或未开启，使用原始几何图形渲染
         // Boss轮廓（简化版）
         const gradient = ctx.createLinearGradient(
             this.x - this.width / 2, this.y - this.height / 2,

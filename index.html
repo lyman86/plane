@@ -113,6 +113,14 @@
             <div id="settingsMenu" class="menu hidden">
                 <h2>游戏设置</h2>
                 <div class="setting-item">
+                    <label>生命数量:</label>
+                    <select id="playerLives">
+                        <option value="1">1条命 (100血)</option>
+                        <option value="2">2条命 (200血)</option>
+                        <option value="3">3条命 (300血)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
                     <label>音效音量:</label>
                     <input type="range" id="soundVolume" min="0" max="100" value="50">
                 </div>
@@ -178,6 +186,7 @@
     <script src="js/core/InputManager.js"></script>
     <script src="js/core/AudioGenerator.js"></script>
     <script src="js/core/AudioManager.js"></script>
+    <script src="js/core/ImageManager.js"></script>
     <script src="js/core/GameStateManager.js"></script>
     <script src="js/core/AchievementManager.js"></script>
     <script src="js/entities/Enemy.js"></script>
@@ -186,6 +195,7 @@
     <script src="js/entities/PowerUp.js"></script>
     <script src="js/entities/Wingman.js"></script>
     <script src="js/entities/Player.js"></script>
+    <script src="js/debug/DebugCommands.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/main.js"></script>
 </body>

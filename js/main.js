@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 创建临时的子弹、敌机、道具类（简化版本）
-    createTemporaryClasses();
+    // createTemporaryClasses(); // 移除临时类，使用正确的类定义
     
     // 直接初始化游戏，跳过旧的加载系统
     initGame().catch(error => {
@@ -511,140 +511,7 @@ function showGameInstructions() {
     console.log('- ESC键: 暂停/继续游戏');
 }
 
-/**
- * 创建临时类（简化版本，用于演示）
- */
-function createTemporaryClasses() {
-    // 简化的子弹类
-    window.Bullet = class extends GameObject {
-        constructor(x, y) {
-            super(x, y);
-            this.setSize(4, 12);
-            this.color = '#ffff00';
-            this.maxSpeed = 500;
-            this.type = 'player';
-        }
-        
-        reset(x, y, vx = 0, vy = -500, type = 'player') {
-            this.position.set(x, y);
-            this.velocity.set(vx, vy);
-            this.type = type;
-            this.active = true;
-            this.visible = true;
-            this.destroyed = false;
-        }
-        
-        onUpdate(deltaTime) {
-            // 边界检查
-            if (this.position.y < -10 || this.position.y > 610 || 
-                this.position.x < -10 || this.position.x > 810) {
-                this.destroy();
-            }
-        }
-        
-        onRender(ctx) {
-            ctx.fillStyle = this.type === 'player' ? '#ffff00' : '#ff4444';
-            ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-        }
-    };
-    
-    // 简化的敌机类
-    window.Enemy = class extends GameObject {
-        constructor(x, y) {
-            super(x, y);
-            this.setSize(30, 30);
-            this.color = '#ff4444';
-            this.maxSpeed = 100;
-            this.hp = 1;
-            this.score = 100;
-        }
-        
-        reset(x, y, type = 'basic') {
-            this.position.set(x, y);
-            this.velocity.set(0, 50);
-            this.type = type;
-            this.hp = 1;
-            this.active = true;
-            this.visible = true;
-            this.destroyed = false;
-        }
-        
-        onUpdate(deltaTime) {
-            // 简单的移动逻辑
-            if (this.position.y > 650) {
-                this.destroy();
-            }
-        }
-        
-        onRender(ctx) {
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-        }
-        
-        takeDamage() {
-            this.hp--;
-            if (this.hp <= 0) {
-                this.destroy();
-                return true;
-            }
-            return false;
-        }
-    };
-    
-    // 简化的道具类
-    window.PowerUp = class extends GameObject {
-        constructor(x, y) {
-            super(x, y);
-            this.setSize(20, 20);
-            this.color = '#00ff00';
-            this.maxSpeed = 80;
-            this.type = 'weapon';
-        }
-        
-        reset(x, y, type = 'weapon') {
-            this.position.set(x, y);
-            this.velocity.set(0, 80);
-            this.type = type;
-            this.active = true;
-            this.visible = true;
-            this.destroyed = false;
-        }
-        
-        onUpdate(deltaTime) {
-            if (this.position.y > 650) {
-                this.destroy();
-            }
-        }
-        
-        onRender(ctx) {
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-        }
-        
-        applyEffect(player) {
-            switch (this.type) {
-                case 'weapon':
-                    player.upgradeWeapon();
-                    break;
-                case 'shield':
-                    player.activateShield();
-                    break;
-                case 'life':
-                    player.heal();
-                    break;
-            }
-            this.destroy();
-        }
-    };
-    
-    // 敌机子弹类
-    window.EnemyBullet = class extends Bullet {
-        constructor(x, y) {
-            super(x, y);
-            this.type = 'enemy';
-        }
-    };
-}
+// 临时类函数已移除，使用正确的类定义
 
 /**
  * 窗口关闭前的清理
