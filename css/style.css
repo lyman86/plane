@@ -9,7 +9,7 @@ body {
     font-family: 'Arial', sans-serif;
     background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
     color: #ffffff;
-    overflow: hidden;
+    overflow: visible !important;
     height: 100vh;
     display: flex;
     justify-content: center;
@@ -22,6 +22,7 @@ body {
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
     background: #000;
+    overflow: visible !important;
 }
 
 #gameCanvas {
@@ -37,6 +38,16 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    overflow: visible !important;
+    z-index: 100;
+}
+
+/* 菜单容器 - 独立的居中布局 */
+#gameUI > .menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 /* HUD显示 - 重新设计 */
@@ -48,13 +59,18 @@ body {
     bottom: 0;
     pointer-events: none;
     z-index: 10;
-    display: grid;
+    padding: 15px;
+    display: none !important; /* 默认隐藏，!important确保优先级 */
+}
+
+/* 只在游戏进行时显示HUD */
+body.game-playing .hud {
+    display: grid !important;
     grid-template-areas: 
         "survival stats"
         "weapons effects";
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto 1fr;
-    padding: 15px;
     gap: 15px;
 }
 
@@ -285,18 +301,18 @@ body {
 
 /* 菜单样式 */
 .menu {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 50, 0.95);
     border: 2px solid #00ffff;
     border-radius: 15px;
     padding: 30px;
-    text-align: center;
-    pointer-events: all;
-    box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
     min-width: 300px;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 1000;
+    pointer-events: auto;
 }
 
 .menu h1 {
@@ -348,44 +364,61 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    text-align: left;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1001;
 }
 
 .setting-item label {
+    font-size: 16px;
     color: #00ffff;
-    font-weight: bold;
-    min-width: 100px;
-}
-
-.setting-item input[type="range"] {
+    text-shadow: 0 0 5px #00ffff;
     flex: 1;
-    margin-left: 15px;
-    accent-color: #00ffff;
+    text-align: left;
 }
 
-.setting-item select {
+.setting-item select,
+.setting-item input {
     background: #003366;
+    color: #ffffff;
     border: 1px solid #00ffff;
-    color: #ffffff;
-    padding: 5px;
     border-radius: 5px;
-    margin-left: 15px;
-}
-
-/* 复选框样式 */
-.setting-item input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: #00ffff;
-    margin-left: 15px;
-    cursor: pointer;
-}
-
-.checkbox-label {
-    color: #ffffff;
-    margin-left: 8px;
+    padding: 8px 12px;
     font-size: 14px;
-    cursor: pointer;
+    outline: none;
+    appearance: menulist;
+    -webkit-appearance: menulist;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1002;
+}
+
+.setting-item select:focus,
+.setting-item input:focus {
+    box-shadow: 0 0 8px #00ffff;
+    border-color: #66ffff;
+}
+
+.setting-item select option {
+    background: #003366;
+    color: #ffffff;
+}
+
+/* 自定义下拉框样式增强 */
+.custom-dropdown {
+    position: relative !important;
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+}
+
+.custom-options {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999999 !important;
+    pointer-events: auto !important;
+    box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3) !important;
 }
 
 /* 排行榜样式 */

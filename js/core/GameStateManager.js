@@ -135,6 +135,11 @@ class GameStateManager {
         // 隐藏所有菜单
         this.hideAllMenus();
         
+        // 默认移除游戏状态class（除非进入PLAYING状态）
+        if (state !== GameState.PLAYING) {
+            document.body.classList.remove('game-playing');
+        }
+        
         switch (state) {
             case GameState.MAIN_MENU:
                 console.log('进入主菜单状态');
@@ -146,6 +151,8 @@ class GameStateManager {
                 this.hideMenu('mainMenu');
                 this.showHUD();
                 this.playGameMusic();
+                // 添加body class以显示HUD
+                document.body.classList.add('game-playing');
                 break;
                 
             case GameState.PAUSED:
@@ -191,6 +198,8 @@ class GameStateManager {
                 
             case GameState.PLAYING:
                 this.hideHUD();
+                // 移除body class以隐藏HUD
+                document.body.classList.remove('game-playing');
                 break;
                 
             case GameState.PAUSED:

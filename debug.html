@@ -1,1 +1,797 @@
- 
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>敌机图片测试 - Debug Mode</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #debugContainer {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 20px auto;
+            background: #000000;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .debug-btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .debug-btn:hover {
+            background: #45a049;
+        }
+        
+        .debug-btn.clear {
+            background: #f44336;
+        }
+        
+        .debug-btn.clear:hover {
+            background: #da190b;
+        }
+        
+        .debug-info {
+            background: #222;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .enemy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .enemy-card {
+            background: #333;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .enemy-type {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .enemy-stats {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        
+        .status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        
+        .loading {
+            color: #ffaa00;
+        }
+        
+        .success {
+            color: #00ff00;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div id="debugContainer">
+        <h1 style="text-align: center;">敌机图片测试 - Debug Mode</h1>
+        
+        <div class="controls">
+            <button class="debug-btn" onclick="spawnAllEnemies()">生成所有敌机类型</button>
+            <button class="debug-btn" onclick="spawnFormations()">生成编队</button>
+            <button class="debug-btn" onclick="spawnSingleType('scout')">生成侦察机</button>
+            <button class="debug-btn" onclick="spawnSingleType('fighter')">生成战斗机</button>
+            <button class="debug-btn" onclick="spawnSingleType('heavy')">生成重型机</button>
+            <button class="debug-btn" onclick="spawnSingleType('elite')">生成精英机</button>
+            <button class="debug-btn" onclick="spawnSingleType('interceptor')">生成拦截机</button>
+            <button class="debug-btn" onclick="spawnSingleType('bomber')">生成轰炸机</button>
+            <button class="debug-btn clear" onclick="clearAllEnemies()">清除所有敌机</button>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="status" id="status">加载中...</div>
+        
+        <div class="debug-info">
+            <h3>敌机类型信息:</h3>
+            <div class="enemy-grid">
+                <div class="enemy-card">
+                    <div class="enemy-type">Scout (侦察机)</div>
+                    <div class="enemy-stats">血量: 1<br>速度: 150<br>分数: 10<br>移动: 曲线<br>攻击: 无<br>图片: enemy_scout.png</div>
+                </div>
+                <div class="enemy-card">
+                    <div class="enemy-type">Fighter (战斗机)</div>
+                    <div class="enemy-stats">血量: 2<br>速度: 100<br>分数: 20<br>移动: 直线<br>攻击: 单发<br>图片: enemy_fighter.png</div>
+                </div>
+                <div class="enemy-card">
+                    <div class="enemy-type">Heavy (重型机)</div>
+                    <div class="enemy-stats">血量: 5<br>速度: 60<br>分数: 50<br>移动: 正弦波<br>攻击: 3连发<br>图片: enemy_heavy.png</div>
+                </div>
+                <div class="enemy-card">
+                    <div class="enemy-type">Elite (精英机)</div>
+                    <div class="enemy-stats">血量: 8<br>速度: 80<br>分数: 100<br>移动: 螺旋<br>攻击: 5连发<br>图片: enemy_elite.png</div>
+                </div>
+                <div class="enemy-card">
+                    <div class="enemy-type">Interceptor (拦截机)</div>
+                    <div class="enemy-stats">血量: 3<br>速度: 120<br>分数: 75<br>移动: 追击<br>攻击: 2连发<br>图片: enemy_interceptor.png</div>
+                </div>
+                <div class="enemy-card">
+                    <div class="enemy-type">Bomber (轰炸机)</div>
+                    <div class="enemy-stats">血量: 6<br>速度: 40<br>分数: 150<br>移动: 编队<br>攻击: 高精度<br>图片: enemy_bomber.png</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <p><strong>说明:</strong> 点击按钮生成不同类型的敌机，观察它们的图片显示效果</p>
+            <p>现在使用 images/ 目录下的真实图片资源</p>
+        </div>
+    </div>
+
+    <script>
+        // 图片管理器
+        class ImageManager {
+            constructor() {
+                this.images = {};
+                this.loadedCount = 0;
+                this.totalCount = 0;
+                this.onAllImagesLoaded = null;
+            }
+            
+            loadImages(imageList, callback) {
+                this.onAllImagesLoaded = callback;
+                this.totalCount = imageList.length;
+                this.loadedCount = 0;
+                
+                imageList.forEach(imageData => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.loadedCount++;
+                        updateStatus(`加载图片: ${this.loadedCount}/${this.totalCount} - ${imageData.name}`, 'loading');
+                        
+                        if (this.loadedCount === this.totalCount) {
+                            updateStatus('所有图片加载完成', 'success');
+                            if (this.onAllImagesLoaded) {
+                                this.onAllImagesLoaded();
+                            }
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        updateStatus(`图片加载失败: ${imageData.name}`, 'error');
+                        console.error(`Failed to load image: ${imageData.src}`);
+                    };
+                    
+                    img.src = imageData.src;
+                    this.images[imageData.name] = img;
+                });
+            }
+            
+            getImage(name) {
+                return this.images[name];
+            }
+            
+            isImageLoaded(name) {
+                const img = this.images[name];
+                return img && img.complete && img.naturalHeight !== 0;
+            }
+        }
+
+        // 简化的Vector2D类
+        class Vector2D {
+            constructor(x = 0, y = 0) {
+                this.x = x;
+                this.y = y;
+            }
+            
+            set(x, y) {
+                this.x = x;
+                this.y = y;
+                return this;
+            }
+            
+            add(vector) {
+                this.x += vector.x;
+                this.y += vector.y;
+                return this;
+            }
+            
+            multiply(scalar) {
+                this.x *= scalar;
+                this.y *= scalar;
+                return this;
+            }
+        }
+
+        // 简化的GameObject类
+        class GameObject {
+            constructor(x = 0, y = 0, width = 10, height = 10) {
+                this.position = new Vector2D(x, y);
+                this.velocity = new Vector2D(0, 0);
+                this.width = width;
+                this.height = height;
+                this.active = true;
+                this.visible = true;
+                this.destroyed = false;
+                this.age = 0;
+            }
+            
+            setSize(width, height) {
+                this.width = width;
+                this.height = height;
+            }
+            
+            onUpdate(deltaTime) {
+                if (!this.active) return;
+                
+                this.age += deltaTime;
+                this.position.add({
+                    x: this.velocity.x * deltaTime,
+                    y: this.velocity.y * deltaTime
+                });
+            }
+            
+            onRender(ctx) {
+                if (!this.visible || this.destroyed) return;
+            }
+        }
+
+        // 使用图片的Enemy类
+        class Enemy extends GameObject {
+            constructor(x, y) {
+                super(x, y);
+                
+                this.hp = 1;
+                this.maxHp = 1;
+                this.damage = 1;
+                this.score = 10;
+                this.enemyType = 'basic';
+                this.baseSpeed = 100;
+                this.movePattern = 'straight';
+                this.patternTime = 0;
+                this.amplitude = 50;
+                this.frequency = 2;
+                this.color = '#ff4444';
+                this.secondaryColor = '#ff8888';
+                this.scale = 1;
+                this.rotation = 0;
+                this.flash = 0;
+                this.animationTime = 0;
+                this.imageName = 'enemy_basic'; // 图片名称
+            }
+
+            reset(x, y, type = 'basic') {
+                this.position.set(x, y);
+                this.velocity.set(0, this.baseSpeed);
+                this.enemyType = type;
+                this.active = true;
+                this.visible = true;
+                this.destroyed = false;
+                this.age = 0;
+                this.patternTime = 0;
+                this.animationTime = 0;
+                this.scale = 1;
+                this.rotation = 0;
+                this.flash = 0;
+                
+                this.setupEnemyType(type);
+            }
+
+            setupEnemyType(type) {
+                switch (type) {
+                    case 'scout':
+                        this.hp = this.maxHp = 1;
+                        this.setSize(60, 60); // 原来是30x30，现在是2倍大小
+                        this.baseSpeed = 150;
+                        this.score = 10;
+                        this.damage = 10;
+                        this.movePattern = 'zigzag';
+                        this.color = '#ff6666';
+                        this.imageName = 'enemy_scout';
+                        break;
+                        
+                    case 'fighter':
+                        this.hp = this.maxHp = 2;
+                        this.setSize(70, 80); // 原来是35x40，现在是2倍大小
+                        this.baseSpeed = 100;
+                        this.score = 20;
+                        this.damage = 20;
+                        this.movePattern = 'straight';
+                        this.color = '#ff4444';
+                        this.imageName = 'enemy_fighter';
+                        break;
+                        
+                    case 'heavy':
+                        this.hp = this.maxHp = 5;
+                        this.setSize(100, 100); // 原来是50x50，现在是2倍大小
+                        this.baseSpeed = 60;
+                        this.score = 50;
+                        this.damage = 30;
+                        this.movePattern = 'sine';
+                        this.color = '#cc2222';
+                        this.imageName = 'enemy_heavy';
+                        break;
+                        
+                    case 'elite':
+                        this.hp = this.maxHp = 8;
+                        this.setSize(90, 110); // 原来是45x55，现在是2倍大小
+                        this.baseSpeed = 80;
+                        this.score = 100;
+                        this.damage = 40;
+                        this.movePattern = 'spiral';
+                        this.color = '#8844ff';
+                        this.imageName = 'enemy_elite';
+                        break;
+
+                    case 'interceptor':
+                        this.hp = this.maxHp = 3;
+                        this.setSize(76, 90); // 原来是38x45，现在是2倍大小
+                        this.baseSpeed = 120;
+                        this.score = 75;
+                        this.damage = 25;
+                        this.movePattern = 'pursuit';
+                        this.color = '#ff6600';
+                        this.imageName = 'enemy_interceptor';
+                        break;
+
+                    case 'bomber':
+                        this.hp = this.maxHp = 6;
+                        this.setSize(120, 90); // 原来是60x45，现在是2倍大小
+                        this.baseSpeed = 40;
+                        this.score = 150;
+                        this.damage = 50;
+                        this.movePattern = 'formation';
+                        this.color = '#444444';
+                        this.imageName = 'enemy_bomber';
+                        break;
+                        
+                    default:
+                        this.imageName = 'enemy_basic';
+                        this.setSize(60, 60); // 原来是30x30，现在是2倍大小
+                        break;
+                }
+                
+                this.velocity.set(0, this.baseSpeed);
+            }
+
+            onUpdate(deltaTime) {
+                super.onUpdate(deltaTime);
+                this.updateMovement(deltaTime);
+                this.updateAnimation(deltaTime);
+            }
+
+            updateMovement(deltaTime) {
+                this.patternTime += deltaTime;
+                
+                const originalY = this.velocity.y;
+                
+                switch (this.movePattern) {
+                    case 'zigzag':
+                        this.velocity.x = Math.sin(this.patternTime * 3) * 50;
+                        break;
+                        
+                    case 'sine':
+                        this.velocity.x = Math.sin(this.patternTime * this.frequency) * this.amplitude;
+                        break;
+                        
+                    case 'spiral':
+                        const spiralRadius = 30;
+                        this.velocity.x = Math.cos(this.patternTime * 4) * spiralRadius;
+                        break;
+                        
+                    case 'pursuit':
+                        // 简单的左右摆动
+                        this.velocity.x = Math.sin(this.patternTime * 2) * 80;
+                        break;
+                        
+                    case 'formation':
+                        // 轻微摆动
+                        this.velocity.x = Math.sin(this.patternTime * 1) * 20;
+                        break;
+                        
+                    default: // straight
+                        this.velocity.x = 0;
+                        break;
+                }
+                
+                this.velocity.y = originalY;
+            }
+
+            updateAnimation(deltaTime) {
+                this.animationTime += deltaTime;
+                this.flash = Math.max(0, this.flash - deltaTime * 3);
+            }
+
+            onRender(ctx) {
+                if (!this.visible || this.destroyed) return;
+                
+                ctx.save();
+                
+                // 移动到敌机位置
+                ctx.translate(this.position.x, this.position.y);
+                ctx.scale(this.scale, this.scale);
+                if (this.rotation !== 0) {
+                    ctx.rotate(this.rotation);
+                }
+                
+                // 受击闪烁效果
+                if (this.flash > 0) {
+                    ctx.globalAlpha = 0.5 + Math.sin(this.flash * 20) * 0.3;
+                }
+                
+                // 使用图片渲染
+                this.renderImage(ctx);
+                
+                ctx.restore();
+                
+                // 渲染血条
+                if (this.hp < this.maxHp) {
+                    this.renderHealthBar(ctx);
+                }
+            }
+
+            renderImage(ctx) {
+                const image = imageManager.getImage(this.imageName);
+                
+                if (image && imageManager.isImageLoaded(this.imageName)) {
+                    // 计算绘制位置（以图片中心为原点）
+                    const drawX = -this.width / 2;
+                    const drawY = -this.height / 2;
+                    
+                    // 绘制图片
+                    ctx.drawImage(image, drawX, drawY, this.width, this.height);
+                    
+                    // 添加一些视觉效果
+                    if (this.enemyType === 'elite') {
+                        // 精英机的护盾效果
+                        const pulseIntensity = 0.3 + 0.3 * Math.sin(this.animationTime * 8);
+                        ctx.strokeStyle = `rgba(136, 68, 255, ${pulseIntensity})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, this.width * 0.6, this.height * 0.6, 0, 0, 2 * Math.PI);
+                        ctx.stroke();
+                    } else if (this.enemyType === 'interceptor') {
+                        // 拦截机的尾焰效果
+                        const flameAlpha = 0.7 + 0.3 * Math.sin(this.animationTime * 15);
+                        ctx.fillStyle = `rgba(255, 170, 0, ${flameAlpha})`;
+                        ctx.fillRect(-this.width * 0.1, this.height * 0.3, this.width * 0.2, 8);
+                    }
+                } else {
+                    // 如果图片未加载，显示备用方案
+                    this.renderFallback(ctx);
+                }
+            }
+            
+            renderFallback(ctx) {
+                // 图片未加载时的备用渲染
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                
+                // 显示类型文字
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.enemyType, 0, 0);
+            }
+
+            renderHealthBar(ctx) {
+                const barWidth = this.width;
+                const barHeight = 4;
+                const barY = this.position.y - this.height/2 - 8;
+                
+                // 背景
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(this.position.x - barWidth/2, barY, barWidth, barHeight);
+                
+                // 血量
+                const healthPercent = this.hp / this.maxHp;
+                let healthColor = '#00ff00';
+                if (healthPercent < 0.5) healthColor = '#ffff00';
+                if (healthPercent < 0.3) healthColor = '#ff0000';
+                
+                ctx.fillStyle = healthColor;
+                ctx.fillRect(this.position.x - barWidth/2, barY, barWidth * healthPercent, barHeight);
+            }
+        }
+
+        // 调试模式变量
+        let canvas, ctx;
+        let enemies = [];
+        let deltaTime = 0;
+        let lastTime = 0;
+        let animationId;
+        let isInitialized = false;
+        let imageManager;
+
+        // 敌机图片列表
+        const enemyImages = [
+            { name: 'enemy_scout', src: 'images/enemy_scout.png' },
+            { name: 'enemy_fighter', src: 'images/enemy_fighter.png' },
+            { name: 'enemy_heavy', src: 'images/enemy_heavy.png' },
+            { name: 'enemy_elite', src: 'images/enemy_elite.png' },
+            { name: 'enemy_interceptor', src: 'images/enemy_interceptor.png' },
+            { name: 'enemy_bomber', src: 'images/enemy_bomber.png' },
+            { name: 'enemy_basic', src: 'images/enemy_basic.png' }
+        ];
+
+        // 初始化调试模式
+        function initDebugMode() {
+            try {
+                canvas = document.getElementById('gameCanvas');
+                ctx = canvas.getContext('2d');
+                
+                // 创建图片管理器
+                imageManager = new ImageManager();
+                
+                updateStatus('开始加载敌机图片...', 'loading');
+                
+                // 加载所有敌机图片
+                imageManager.loadImages(enemyImages, () => {
+                    isInitialized = true;
+                    updateStatus('初始化完成，点击按钮测试图片效果！', 'success');
+                    gameLoop();
+                });
+                
+                console.log('Debug mode initialization started');
+            } catch (error) {
+                updateStatus('初始化失败: ' + error.message, 'error');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        // 更新状态显示
+        function updateStatus(message, type = 'normal') {
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.className = 'status ' + type;
+            }
+        }
+
+        // 游戏循环
+        function gameLoop(currentTime = 0) {
+            if (!isInitialized) return;
+            
+            deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            // 限制deltaTime避免跳跃
+            deltaTime = Math.min(deltaTime, 0.033);
+            
+            // 清空画布 - 纯黑色背景
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制星空背景
+            drawStarField();
+            
+            // 更新和渲染所有敌机
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                // 更新敌机
+                enemy.onUpdate(deltaTime);
+                
+                // 检查边界，移除飞出屏幕的敌机
+                if (enemy.position.y > canvas.height + 50) {
+                    enemies.splice(i, 1);
+                    continue;
+                }
+                
+                // 渲染敌机
+                enemy.onRender(ctx);
+            }
+            
+            // 显示调试信息
+            drawDebugInfo();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 绘制星空背景
+        function drawStarField() {
+            // 绘制大星星
+            for (let i = 0; i < 30; i++) {
+                const x = (i * 137) % canvas.width;
+                const y = ((i * 173 + performance.now() * 0.005) % canvas.height);
+                const opacity = (Math.sin(i * 0.1 + performance.now() * 0.002) + 1) * 0.4 + 0.3;
+                const size = Math.sin(i * 0.5) * 1 + 1.5;
+                
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                ctx.fillRect(x, y, size, size);
+            }
+            
+            // 绘制小星星
+            for (let i = 0; i < 80; i++) {
+                const x = (i * 251) % canvas.width;
+                const y = ((i * 317 + performance.now() * 0.008) % canvas.height);
+                const opacity = (Math.sin(i * 0.3 + performance.now() * 0.003) + 1) * 0.25 + 0.2;
+                
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                ctx.fillRect(x, y, 1, 1);
+            }
+            
+            // 绘制远景星星（更小更暗）
+            for (let i = 0; i < 120; i++) {
+                const x = (i * 97) % canvas.width;
+                const y = ((i * 149 + performance.now() * 0.003) % canvas.height);
+                const opacity = (Math.sin(i * 0.2 + performance.now() * 0.001) + 1) * 0.15 + 0.1;
+                
+                ctx.fillStyle = `rgba(200, 220, 255, ${opacity})`;
+                ctx.fillRect(x, y, 0.5, 0.5);
+            }
+            
+            ctx.globalAlpha = 1;
+        }
+
+        // 显示调试信息
+        function drawDebugInfo() {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px Arial';
+            ctx.fillText(`敌机数量: ${enemies.length}`, 10, 30);
+            if (deltaTime > 0) {
+                ctx.fillText(`FPS: ${Math.round(1 / deltaTime)}`, 10, 50);
+            }
+            ctx.fillText('使用真实图片渲染', 10, 70);
+        }
+
+        // 生成所有类型的敌机
+        function spawnAllEnemies() {
+            if (!isInitialized) {
+                updateStatus('请等待图片加载完成', 'error');
+                return;
+            }
+            
+            try {
+                const types = ['scout', 'fighter', 'heavy', 'elite', 'interceptor', 'bomber'];
+                const spacing = canvas.width / (types.length + 1);
+                
+                types.forEach((type, index) => {
+                    const x = spacing * (index + 1);
+                    const y = 50;
+                    const enemy = new Enemy(x, y);
+                    enemy.reset(x, y, type);
+                    enemies.push(enemy);
+                });
+                
+                updateStatus(`生成了 ${types.length} 种敌机类型，使用真实图片`, 'success');
+                console.log('Spawned all enemy types with images');
+            } catch (error) {
+                updateStatus('生成敌机失败: ' + error.message, 'error');
+                console.error('Spawn error:', error);
+            }
+        }
+
+        // 生成编队
+        function spawnFormations() {
+            if (!isInitialized) {
+                updateStatus('请等待图片加载完成', 'error');
+                return;
+            }
+            
+            try {
+                // V字形编队
+                spawnVFormation('fighter', 200, 50);
+                spawnVFormation('scout', 500, 100);
+                
+                // 直线编队
+                spawnLineFormation('heavy', 150, 150);
+                
+                updateStatus('生成了多个编队，使用真实图片', 'success');
+            } catch (error) {
+                updateStatus('生成编队失败: ' + error.message, 'error');
+                console.error('Formation spawn error:', error);
+            }
+        }
+
+        // 生成V字形编队
+        function spawnVFormation(type, centerX, centerY) {
+            const formation = [
+                { x: 0, y: 0 },     // 中心
+                { x: -40, y: 25 },  // 左
+                { x: 40, y: 25 },   // 右
+                { x: -80, y: 50 },  // 左后
+                { x: 80, y: 50 }    // 右后
+            ];
+            
+            formation.forEach(offset => {
+                const enemy = new Enemy(centerX + offset.x, centerY + offset.y);
+                enemy.reset(centerX + offset.x, centerY + offset.y, type);
+                enemies.push(enemy);
+            });
+        }
+
+        // 生成直线编队
+        function spawnLineFormation(type, startX, startY) {
+            for (let i = 0; i < 4; i++) {
+                const enemy = new Enemy(startX + i * 50, startY);
+                enemy.reset(startX + i * 50, startY, type);
+                enemies.push(enemy);
+            }
+        }
+
+        // 生成单一类型敌机
+        function spawnSingleType(type) {
+            if (!isInitialized) {
+                updateStatus('请等待图片加载完成', 'error');
+                return;
+            }
+            
+            try {
+                const count = 5;
+                const spacing = canvas.width / (count + 1);
+                
+                for (let i = 0; i < count; i++) {
+                    const x = spacing * (i + 1);
+                    const y = Math.random() * 100 + 50;
+                    const enemy = new Enemy(x, y);
+                    enemy.reset(x, y, type);
+                    enemies.push(enemy);
+                }
+                
+                updateStatus(`生成了 ${count} 架 ${type} 敌机，使用真实图片`, 'success');
+                console.log(`Spawned ${count} ${type} enemies with images`);
+            } catch (error) {
+                updateStatus('生成敌机失败: ' + error.message, 'error');
+                console.error('Single type spawn error:', error);
+            }
+        }
+
+        // 清除所有敌机
+        function clearAllEnemies() {
+            enemies = [];
+            updateStatus('已清除所有敌机', 'success');
+            console.log('Cleared all enemies');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initDebugMode, 100);
+        });
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+    </script>
+</body>
+</html> 

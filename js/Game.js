@@ -20,6 +20,12 @@ class Game {
         this.inputManager = InputManager.getInstance();
         this.stateManager = GameStateManager.getInstance();
         // 延迟创建AudioManager，让界面先显示
+        
+        // 碰撞冷却计时器
+        this.lastBossCollision = 0;
+        
+        // 屏幕震动效果
+        this.screenShake = { intensity: 0, duration: 0 };
         this.audioManager = null;
         this.imageManager = ImageManager.getInstance();
         this.particleSystem = new ParticleSystem();
@@ -55,7 +61,8 @@ class Game {
             difficulty: 1,
             currentLevel: 1,
             debug: false, // 默认关闭调试模式
-            playerLives: 1 // 默认1条命
+            playerLives: 1, // 默认1条命
+            controlType: 'keyboard' // 默认控制方式为键盘
         };
 
         // 消息系统
@@ -259,34 +266,650 @@ class Game {
      * 设置设置菜单事件
      */
     setupSettingsEvents() {
+        console.log('设置设置菜单事件监听器...');
+        
         const soundVolumeSlider = document.getElementById('soundVolume');
         const musicVolumeSlider = document.getElementById('musicVolume');
         const debugModeCheckbox = document.getElementById('debugMode');
         const playerLivesSelect = document.getElementById('playerLives');
+        const controlTypeSelect = document.getElementById('controlType');
+        
+        // 验证元素是否存在
+        console.log('设置元素检查:');
+        console.log('soundVolumeSlider:', !!soundVolumeSlider);
+        console.log('musicVolumeSlider:', !!musicVolumeSlider);
+        console.log('debugModeCheckbox:', !!debugModeCheckbox);
+        console.log('playerLivesSelect:', !!playerLivesSelect);
+        console.log('controlTypeSelect:', !!controlTypeSelect);
+        
+        // 检查并确保playerLives选项完整
+        if (playerLivesSelect) {
+            console.log('当前生命数量选项数量:', playerLivesSelect.options.length);
+            
+            // 强制重建选项，确保选项正确
+            console.log('强制重建生命数量选项...');
+            playerLivesSelect.innerHTML = '';
+            
+            const options = [
+                { value: '1', text: '1条命 (100血)' },
+                { value: '2', text: '2条命 (200血)' },
+                { value: '3', text: '3条命 (300血)' }
+            ];
+            
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.text;
+                option.style.background = '#003366';
+                option.style.color = '#ffffff';
+                playerLivesSelect.appendChild(option);
+                console.log(`添加选项: ${opt.text}`);
+            });
+            
+            console.log('选项重建完成，新的选项数量:', playerLivesSelect.options.length);
+            
+            // 验证选项是否正确添加
+            for (let i = 0; i < playerLivesSelect.options.length; i++) {
+                const option = playerLivesSelect.options[i];
+                console.log(`验证选项${i}: value="${option.value}", text="${option.text}"`);
+            }
+            
+            // 延迟一秒后自动创建自定义下拉框（给原生select一个机会工作）
+            setTimeout(() => {
+                console.log('自动创建自定义下拉框以替代原生select...');
+                this.createCustomDropdownForPlayerLives();
+            }, 1000);
+        }
+        
+        // 同样处理控制方式选择器
+        if (controlTypeSelect) {
+            setTimeout(() => {
+                console.log('自动创建控制方式自定义下拉框...');
+                this.createCustomDropdownForControlType();
+            }, 1100);
+        }
         
         // 加载保存的设置
         this.loadSettings();
         
         soundVolumeSlider?.addEventListener('input', (e) => {
-                            this.audioManager.setSfxVolume(e.target.value / 100);
+            if (this.audioManager) {
+                this.audioManager.setSfxVolume(e.target.value / 100);
+            }
             this.saveSettings();
+            console.log('音效音量设置为:', e.target.value);
         });
         
         musicVolumeSlider?.addEventListener('input', (e) => {
-            this.audioManager.setMusicVolume(e.target.value / 100);
+            if (this.audioManager) {
+                this.audioManager.setMusicVolume(e.target.value / 100);
+            }
             this.saveSettings();
+            console.log('音乐音量设置为:', e.target.value);
         });
         
         debugModeCheckbox?.addEventListener('change', (e) => {
             this.config.debug = e.target.checked;
             this.saveSettings();
+            console.log('调试模式设置为:', e.target.checked);
         });
         
         playerLivesSelect?.addEventListener('change', (e) => {
+            console.log('生命数量选择器被点击！事件值:', e.target.value);
             this.config.playerLives = parseInt(e.target.value);
             this.saveSettings();
             console.log(`设置玩家生命数量为: ${this.config.playerLives}条命`);
         });
+        
+        // 确认生命数量选择器事件监听器已设置
+        if (playerLivesSelect) {
+            console.log('生命数量选择器事件监听器设置成功');
+        } else {
+            console.error('生命数量选择器未找到！');
+        }
+        
+        // 添加控制方式事件监听器
+        controlTypeSelect?.addEventListener('change', (e) => {
+            this.config.controlType = e.target.value;
+            this.saveSettings();
+            console.log(`设置控制方式为: ${this.config.controlType}`);
+        });
+        
+        console.log('设置菜单事件监听器设置完成');
+        
+        // 添加全局测试函数，用于在控制台测试
+        window.testPlayerLivesSelect = () => {
+            const select = document.getElementById('playerLives');
+            if (select) {
+                console.log('生命数量选择器找到，当前值:', select.value);
+                console.log('选择器的选项数量:', select.options.length);
+                console.log('所有选项:');
+                for (let i = 0; i < select.options.length; i++) {
+                    const option = select.options[i];
+                    console.log(`  选项${i}: value="${option.value}", text="${option.text}"`);
+                }
+                
+                // 手动触发change事件
+                const event = new Event('change', { bubbles: true });
+                select.dispatchEvent(event);
+                console.log('手动触发change事件完成');
+            } else {
+                console.error('未找到生命数量选择器！');
+            }
+        };
+        
+        // 添加选项重建函数
+        window.rebuildPlayerLivesOptions = () => {
+            const select = document.getElementById('playerLives');
+            if (select) {
+                console.log('重建生命数量选项...');
+                select.innerHTML = '';
+                
+                const options = [
+                    { value: '1', text: '1条命 (100血)' },
+                    { value: '2', text: '2条命 (200血)' },
+                    { value: '3', text: '3条命 (300血)' }
+                ];
+                
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.textContent = opt.text;
+                    select.appendChild(option);
+                });
+                
+                console.log('选项重建完成，新的选项数量:', select.options.length);
+                window.testPlayerLivesSelect();
+            }
+        };
+        
+        // 添加备用解决方案：自定义下拉框
+        window.createCustomDropdown = () => {
+            const select = document.getElementById('playerLives');
+            if (!select) return;
+            
+            console.log('创建自定义下拉框...');
+            
+            // 隐藏原生select
+            select.style.display = 'none';
+            
+            // 创建自定义下拉框
+            const customDropdown = document.createElement('div');
+            customDropdown.className = 'custom-dropdown';
+            customDropdown.style.cssText = `
+                position: relative;
+                background: #003366;
+                border: 1px solid #00ffff;
+                color: #ffffff;
+                padding: 8px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                min-width: 180px;
+                font-size: 14px;
+                z-index: 99999;
+                margin-left: 15px;
+            `;
+            
+            // 当前选择显示
+            const currentChoice = document.createElement('div');
+            currentChoice.textContent = select.options[select.selectedIndex].text;
+            currentChoice.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+            
+            // 下拉箭头
+            const arrow = document.createElement('span');
+            arrow.textContent = '▼';
+            arrow.style.cssText = 'margin-left: 10px; transition: transform 0.3s; font-size: 12px;';
+            currentChoice.appendChild(arrow);
+            
+            // 选项列表
+            const optionsList = document.createElement('div');
+            optionsList.className = 'custom-options';
+            optionsList.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #003366;
+                border: 1px solid #00ffff;
+                border-top: none;
+                border-radius: 0 0 5px 5px;
+                display: none;
+                z-index: 999999;
+                max-height: 150px;
+                overflow-y: auto;
+                box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3);
+            `;
+            
+            // 添加选项
+            for (let i = 0; i < select.options.length; i++) {
+                const option = select.options[i];
+                const customOption = document.createElement('div');
+                customOption.textContent = option.text;
+                customOption.dataset.value = option.value;
+                customOption.style.cssText = `
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+                    transition: background-color 0.2s;
+                    font-size: 14px;
+                `;
+                
+                // 当前选中项高亮
+                if (option.selected) {
+                    customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                }
+                
+                // 鼠标悬停效果
+                customOption.addEventListener('mouseenter', () => {
+                    customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.3)';
+                });
+                customOption.addEventListener('mouseleave', () => {
+                    if (!option.selected) {
+                        customOption.style.backgroundColor = 'transparent';
+                    } else {
+                        customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                    }
+                });
+                
+                // 点击选择
+                customOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // 更新原生select的值
+                    select.value = customOption.dataset.value;
+                    
+                    // 更新显示
+                    currentChoice.firstChild.textContent = customOption.textContent;
+                    
+                    // 关闭下拉框
+                    optionsList.style.display = 'none';
+                    arrow.style.transform = 'rotate(0deg)';
+                    
+                    // 更新选中状态显示
+                    optionsList.querySelectorAll('div').forEach(div => {
+                        div.style.backgroundColor = 'transparent';
+                    });
+                    customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                    
+                    // 触发原生change事件
+                    const changeEvent = new Event('change', { bubbles: true });
+                    select.dispatchEvent(changeEvent);
+                    
+                    console.log('自定义下拉框选择:', customOption.dataset.value);
+                });
+                
+                optionsList.appendChild(customOption);
+            }
+            
+            // 点击展开/收起
+            customDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = optionsList.style.display === 'block';
+                
+                // 关闭其他可能打开的下拉框
+                document.querySelectorAll('.custom-options').forEach(opts => {
+                    if (opts !== optionsList) {
+                        opts.style.display = 'none';
+                        const otherArrow = opts.parentNode.querySelector('span');
+                        if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+                
+                optionsList.style.display = isOpen ? 'none' : 'block';
+                arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+            });
+            
+            // 点击外部关闭
+            document.addEventListener('click', (e) => {
+                if (!customDropdown.contains(e.target)) {
+                    optionsList.style.display = 'none';
+                    arrow.style.transform = 'rotate(0deg)';
+                }
+            });
+            
+            customDropdown.appendChild(currentChoice);
+            customDropdown.appendChild(optionsList);
+            
+            // 替换原select
+            select.parentNode.insertBefore(customDropdown, select.nextSibling);
+            
+            console.log('自定义下拉框创建完成');
+        };
+        
+        console.log('可以在控制台运行以下命令:');
+        console.log('- window.testPlayerLivesSelect() 检查选项');
+        console.log('- window.rebuildPlayerLivesOptions() 重建选项');
+        console.log('- window.createCustomDropdown() 创建自定义下拉框');
+    }
+
+    /**
+     * 创建自定义下拉框来替代原生select（Game类方法）
+     */
+    createCustomDropdownForPlayerLives() {
+        const select = document.getElementById('playerLives');
+        if (!select) {
+            console.log('未找到playerLives选择器');
+            return;
+        }
+
+        // 检查是否已经创建过自定义下拉框
+        const existingCustom = select.parentNode.querySelector('.custom-dropdown');
+        if (existingCustom) {
+            console.log('自定义下拉框已存在');
+            return;
+        }
+        
+        console.log('创建自定义下拉框...');
+        
+        // 隐藏原生select
+        select.style.display = 'none';
+        
+        // 创建自定义下拉框
+        const customDropdown = document.createElement('div');
+        customDropdown.className = 'custom-dropdown';
+        customDropdown.style.cssText = `
+            position: relative;
+            background: #003366;
+            border: 1px solid #00ffff;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 180px;
+            font-size: 14px;
+            z-index: 99999;
+            margin-left: 15px;
+        `;
+        
+        // 当前选择显示
+        const currentChoice = document.createElement('div');
+        currentChoice.textContent = select.options[select.selectedIndex].text;
+        currentChoice.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+        
+        // 下拉箭头
+        const arrow = document.createElement('span');
+        arrow.textContent = '▼';
+        arrow.style.cssText = 'margin-left: 10px; transition: transform 0.3s; font-size: 12px;';
+        currentChoice.appendChild(arrow);
+        
+        // 选项列表
+        const optionsList = document.createElement('div');
+        optionsList.className = 'custom-options';
+        optionsList.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #003366;
+            border: 1px solid #00ffff;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            display: none;
+            z-index: 999999;
+            max-height: 150px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3);
+        `;
+        
+        // 添加选项
+        for (let i = 0; i < select.options.length; i++) {
+            const option = select.options[i];
+            const customOption = document.createElement('div');
+            customOption.textContent = option.text;
+            customOption.dataset.value = option.value;
+            customOption.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+                transition: background-color 0.2s;
+                font-size: 14px;
+            `;
+            
+            // 当前选中项高亮
+            if (option.selected) {
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+            }
+            
+            // 鼠标悬停效果
+            customOption.addEventListener('mouseenter', () => {
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.3)';
+            });
+            customOption.addEventListener('mouseleave', () => {
+                if (!option.selected) {
+                    customOption.style.backgroundColor = 'transparent';
+                } else {
+                    customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                }
+            });
+            
+            // 点击选择
+            customOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // 更新原生select的值
+                select.value = customOption.dataset.value;
+                
+                // 更新显示
+                currentChoice.firstChild.textContent = customOption.textContent;
+                
+                // 关闭下拉框
+                optionsList.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+                
+                // 更新选中状态显示
+                optionsList.querySelectorAll('div').forEach(div => {
+                    div.style.backgroundColor = 'transparent';
+                });
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                
+                // 触发原生change事件
+                const changeEvent = new Event('change', { bubbles: true });
+                select.dispatchEvent(changeEvent);
+                
+                console.log('自定义下拉框选择:', customOption.dataset.value);
+            });
+            
+            optionsList.appendChild(customOption);
+        }
+        
+        // 点击展开/收起
+        customDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = optionsList.style.display === 'block';
+            
+            // 关闭其他可能打开的下拉框
+            document.querySelectorAll('.custom-options').forEach(opts => {
+                if (opts !== optionsList) {
+                    opts.style.display = 'none';
+                    const otherArrow = opts.parentNode.querySelector('span');
+                    if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+                }
+            });
+            
+            optionsList.style.display = isOpen ? 'none' : 'block';
+            arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+        
+        // 点击外部关闭
+        document.addEventListener('click', (e) => {
+            if (!customDropdown.contains(e.target)) {
+                optionsList.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        customDropdown.appendChild(currentChoice);
+        customDropdown.appendChild(optionsList);
+        
+        // 替换原select
+        select.parentNode.insertBefore(customDropdown, select.nextSibling);
+        
+        console.log('自定义下拉框创建完成');
+    }
+
+    /**
+     * 创建控制方式自定义下拉框
+     */
+    createCustomDropdownForControlType() {
+        const select = document.getElementById('controlType');
+        if (!select) {
+            console.log('未找到controlType选择器');
+            return;
+        }
+
+        // 检查是否已经创建过自定义下拉框
+        const existingCustom = select.parentNode.querySelector('.custom-dropdown');
+        if (existingCustom) {
+            console.log('控制方式自定义下拉框已存在');
+            return;
+        }
+        
+        console.log('创建控制方式自定义下拉框...');
+        
+        // 隐藏原生select
+        select.style.display = 'none';
+        
+        // 创建自定义下拉框
+        const customDropdown = document.createElement('div');
+        customDropdown.className = 'custom-dropdown';
+        customDropdown.style.cssText = `
+            position: relative;
+            background: #003366;
+            border: 1px solid #00ffff;
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 150px;
+            font-size: 14px;
+            z-index: 99999;
+            margin-left: 15px;
+        `;
+        
+        // 当前选择显示
+        const currentChoice = document.createElement('div');
+        currentChoice.textContent = select.options[select.selectedIndex].text;
+        currentChoice.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+        
+        // 下拉箭头
+        const arrow = document.createElement('span');
+        arrow.textContent = '▼';
+        arrow.style.cssText = 'margin-left: 10px; transition: transform 0.3s; font-size: 12px;';
+        currentChoice.appendChild(arrow);
+        
+        // 选项列表
+        const optionsList = document.createElement('div');
+        optionsList.className = 'custom-options';
+        optionsList.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #003366;
+            border: 1px solid #00ffff;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            display: none;
+            z-index: 999999;
+            max-height: 150px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.3);
+        `;
+        
+        // 添加选项
+        for (let i = 0; i < select.options.length; i++) {
+            const option = select.options[i];
+            const customOption = document.createElement('div');
+            customOption.textContent = option.text;
+            customOption.dataset.value = option.value;
+            customOption.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+                transition: background-color 0.2s;
+                font-size: 14px;
+            `;
+            
+            // 当前选中项高亮
+            if (option.selected) {
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+            }
+            
+            // 鼠标悬停效果
+            customOption.addEventListener('mouseenter', () => {
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.3)';
+            });
+            customOption.addEventListener('mouseleave', () => {
+                if (!option.selected) {
+                    customOption.style.backgroundColor = 'transparent';
+                } else {
+                    customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                }
+            });
+            
+            // 点击选择
+            customOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // 更新原生select的值
+                select.value = customOption.dataset.value;
+                
+                // 更新显示
+                currentChoice.firstChild.textContent = customOption.textContent;
+                
+                // 关闭下拉框
+                optionsList.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+                
+                // 更新选中状态显示
+                optionsList.querySelectorAll('div').forEach(div => {
+                    div.style.backgroundColor = 'transparent';
+                });
+                customOption.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
+                
+                // 触发原生change事件
+                const changeEvent = new Event('change', { bubbles: true });
+                select.dispatchEvent(changeEvent);
+                
+                console.log('控制方式自定义下拉框选择:', customOption.dataset.value);
+            });
+            
+            optionsList.appendChild(customOption);
+        }
+        
+        // 点击展开/收起
+        customDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = optionsList.style.display === 'block';
+            
+            // 关闭其他可能打开的下拉框
+            document.querySelectorAll('.custom-options').forEach(opts => {
+                if (opts !== optionsList) {
+                    opts.style.display = 'none';
+                    const otherArrow = opts.parentNode.querySelector('span');
+                    if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+                }
+            });
+            
+            optionsList.style.display = isOpen ? 'none' : 'block';
+            arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+        
+        // 点击外部关闭
+        document.addEventListener('click', (e) => {
+            if (!customDropdown.contains(e.target)) {
+                optionsList.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        customDropdown.appendChild(currentChoice);
+        customDropdown.appendChild(optionsList);
+        
+        // 替换原select
+        select.parentNode.insertBefore(customDropdown, select.nextSibling);
+        
+        console.log('控制方式自定义下拉框创建完成');
     }
 
     /**
@@ -347,6 +970,10 @@ class Game {
                 if (controlTypeSelect) {
                     controlTypeSelect.value = settings.controlType;
                 }
+                this.config.controlType = settings.controlType;
+            } else {
+                // 如果没有保存的设置，使用默认值
+                this.config.controlType = 'keyboard';
             }
         } catch (error) {
             console.warn('加载设置失败:', error);
@@ -361,9 +988,9 @@ class Game {
             const settings = {
                 debug: this.config.debug,
                 playerLives: this.config.playerLives || 1,
+                controlType: this.config.controlType || 'keyboard',
                 soundVolume: document.getElementById('soundVolume')?.value || 50,
-                musicVolume: document.getElementById('musicVolume')?.value || 30,
-                controlType: document.getElementById('controlType')?.value || 'keyboard'
+                musicVolume: document.getElementById('musicVolume')?.value || 30
             };
             
             localStorage.setItem('planewar_settings', JSON.stringify(settings));
@@ -1059,6 +1686,9 @@ class Game {
      * 更新游戏玩法
      */
     updateGameplay(deltaTime) {
+        // 更新游戏时间
+        this.gameTime += deltaTime;
+        
         // 更新背景
         this.updateBackground(deltaTime);
         
@@ -1106,6 +1736,9 @@ class Game {
         
         // 检查游戏结束条件
         this.checkGameOver();
+        
+        // 更新屏幕震动
+        this.updateScreenShake(deltaTime);
     }
 
     /**
@@ -1178,6 +1811,12 @@ class Game {
      * 生成敌机
      */
     spawnEnemies(deltaTime) {
+        // 如果有活跃的Boss，停止生成其他敌机
+        if (this.boss && this.boss.active && !this.boss.isDead()) {
+            console.log('Boss存在，停止生成敌机');
+            return;
+        }
+        
         this.enemySpawner.update(deltaTime);
     }
 
@@ -1296,7 +1935,7 @@ class Game {
         // 敌机子弹 vs 玩家 (包括Boss子弹)
         this.bullets.forEach(bullet => {
             // 判断是否为敌机子弹 - 扩展支持所有敌机武器类型
-            const isEnemyBullet = ['enemy', 'heavy_bullet', 'elite_bullet', 'interceptor_bullet', 'bomb', 'enemyBoss', 'laser', 'missile', 'shockwave'].includes(bullet.type);
+            const isEnemyBullet = ['enemy', 'heavy_bullet', 'elite_bullet', 'interceptor_bullet', 'bomb', 'enemyBoss', 'boss_laser', 'missile', 'shockwave'].includes(bullet.type);
             
             if (isEnemyBullet && !bullet.destroyed) {
                 if (this.checkCollision(bullet, this.player)) {
@@ -1314,24 +1953,31 @@ class Game {
             }
         });
         
-        // Boss vs 玩家
+        // Boss vs 玩家 - 移除伤害，只显示视觉效果
         if (this.boss && this.boss.active && !this.boss.isDead()) {
             if (this.checkCollision(this.boss, this.player)) {
-                // Boss撞击玩家造成大量伤害
-                this.player.takeDamage(50);
-                
-                // Boss受到轻微反伤
-                this.boss.takeDamage(10);
-                
-                // 显示碰撞效果
-                this.showFloatingText({
-                    text: '撞击！',
-                    x: this.player.x,
-                    y: this.player.y - 30,
-                    color: '#ff0000',
-                    size: 20,
-                    velocity: { x: 0, y: -80 }
-                });
+                // 防止连续碰撞音效
+                const now = Date.now();
+                if (!this.lastBossCollision || now - this.lastBossCollision > 1000) { // 1秒冷却
+                    
+                    // 只显示碰撞效果，不造成伤害
+                    this.showFloatingText({
+                        text: '碰撞！',
+                        x: this.player.x,
+                        y: this.player.y - 30,
+                        color: '#ffff00',
+                        size: 18,
+                        velocity: { x: 0, y: -60 }
+                    });
+                    
+                    // 播放碰撞音效
+                    if (this.audioManager) {
+                        this.audioManager.playSound('player_hit', 0.5);
+                    }
+                    
+                    this.lastBossCollision = now;
+                    console.log('Boss碰撞玩家，无伤害');
+                }
             }
         }
         
@@ -1396,11 +2042,33 @@ class Game {
             });
         }
     }
+    
+    /**
+     * 更新屏幕震动效果
+     */
+    updateScreenShake(deltaTime) {
+        if (this.screenShake.duration > 0) {
+            this.screenShake.duration -= deltaTime * 1000; // deltaTime转毫秒
+            if (this.screenShake.duration <= 0) {
+                this.screenShake.intensity = 0;
+                this.screenShake.duration = 0;
+            }
+        }
+    }
 
     /**
      * 渲染游戏
      */
     render() {
+        this.ctx.save();
+        
+        // 应用屏幕震动效果
+        if (this.screenShake.duration > 0) {
+            const shakeX = (Math.random() - 0.5) * this.screenShake.intensity;
+            const shakeY = (Math.random() - 0.5) * this.screenShake.intensity;
+            this.ctx.translate(shakeX, shakeY);
+        }
+        
         // 清空画布
         this.clearCanvas();
         
@@ -1419,6 +2087,8 @@ class Game {
         if (this.config.debug) {
             this.renderDebugInfo();
         }
+        
+        this.ctx.restore();
     }
 
     /**
@@ -1609,17 +2279,43 @@ class Game {
      * 渲染消息
      */
     renderMessages() {
+        if (this.messages.length === 0) return;
+        
         this.ctx.save();
         this.ctx.textAlign = 'center';
-        this.ctx.font = 'bold 18px Arial';
+        
+        // 预计算闪烁强度，避免在循环中重复计算
+        const gameTime = this.gameTime || 0;
+        const blinkIntensity = Math.sin(gameTime * 0.01) * 0.3 + 0.7;
         
         this.messages.forEach((message, index) => {
-            this.ctx.globalAlpha = message.alpha;
-            this.ctx.fillStyle = '#ffff00';
-            this.ctx.strokeStyle = '#000000';
-            this.ctx.lineWidth = 2;
+            // 检查是否为Boss激光警告消息，给予特殊处理
+            const isLaserWarning = message.text.includes('激光') || message.text.includes('⚡') || message.text.includes('💥') || message.text.includes('🔥');
             
-            const y = this.config.canvasHeight / 2 + 50 + index * 30;
+            if (isLaserWarning) {
+                // Boss激光警告 - 更大更醒目
+                this.ctx.font = 'bold 24px Arial';
+                this.ctx.globalAlpha = message.alpha * blinkIntensity;
+                
+                // 红色警告文字
+                this.ctx.fillStyle = '#ff3300';
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 3;
+                
+                // 简化发光效果，减少性能消耗
+                this.ctx.shadowColor = '#ff3300';
+                this.ctx.shadowBlur = 5;
+            } else {
+                // 普通消息
+                this.ctx.font = 'bold 18px Arial';
+                this.ctx.globalAlpha = message.alpha;
+                this.ctx.fillStyle = '#ffff00';
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 2;
+                this.ctx.shadowBlur = 0;
+            }
+            
+            const y = this.config.canvasHeight / 2 + 50 + index * 35;
             this.ctx.strokeText(message.text, this.config.canvasWidth / 2, y);
             this.ctx.fillText(message.text, this.config.canvasWidth / 2, y);
         });
@@ -1760,19 +2456,25 @@ class Game {
                 break;
             case 'KeyB':
                 console.log('B键被按下');
-                // 测试用：B键召唤Boss（调试模式下）
-                if (this.stateManager.isState(GameState.PLAYING) && this.config.debug) {
+                // B键召唤Boss（任何模式下都可以使用）
+                if (this.stateManager.isState(GameState.PLAYING)) {
                     console.log('尝试召唤Boss...');
                     if (!this.boss || !this.boss.active) {
                         console.log('正在创建Boss');
-                        this.createBoss(this.config.canvasWidth / 2, -100, 'standard');
-                        this.showMessage('测试Boss已召唤！', 2000);
+                        const boss = this.createBoss(this.config.canvasWidth / 2, -100, 'standard');
+                        if (boss) {
+                            // 跳过警告时间，让Boss立即出现
+                            boss.warningTimer = 0;
+                            boss.y = -boss.height * 0.5; // 设置优化后的起始位置
+                        }
+                        this.showMessage('Boss已召唤！按V查看状态', 2500);
                     } else {
                         console.log('Boss已存在，无法召唤新的');
-                        this.showMessage('Boss已存在！', 1000);
+                        this.showMessage('Boss已存在！', 1500);
                     }
                 } else {
-                    console.log('条件不满足：游戏状态或调试模式');
+                    console.log('只能在游戏进行中召唤Boss');
+                    this.showMessage('只能在游戏中使用', 1500);
                 }
                 break;
             case 'KeyV':

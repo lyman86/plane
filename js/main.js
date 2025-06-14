@@ -37,11 +37,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function showImmediateLoadingScreen() {
     console.log('=== 立即显示加载界面 ===');
     
-    // 确保主菜单隐藏
-    const mainMenu = document.getElementById('mainMenu');
-    if (mainMenu) {
-        mainMenu.classList.add('hidden');
-    }
+    // 注意：不要强制隐藏主菜单，让GameStateManager控制菜单显示
+    // 主菜单的显示/隐藏应该由GameStateManager统一管理
     
     // 创建加载界面
     const loadingOverlay = document.createElement('div');

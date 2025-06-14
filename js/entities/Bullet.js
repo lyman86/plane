@@ -84,8 +84,8 @@ class Bullet extends GameObject {
                 break;
 
             case 'laser_beam':
-                this.color = '#ff0000';
-                this.glowColor = '#ff4444';
+                this.color = '#00ffff'; // 玩家激光使用青色
+                this.glowColor = '#88ffff';
                 this.damage = 5;
                 this.setSize(20, 60); // 粗光束
                 this.penetration = 10; // 高穿透
@@ -193,6 +193,36 @@ class Bullet extends GameObject {
                 this.setSize(10, 30);
                 this.penetration = 3;
                 this.scaleEffect = 1.5;
+                break;
+
+            // Boss子弹类型
+            case 'enemyBoss':
+                this.color = '#ff0066';
+                this.glowColor = '#ff4499';
+                this.damage = 25; // Boss基础伤害25点
+                this.setSize(8, 16);
+                this.rotationSpeed = 3;
+                break;
+                
+            case 'boss_laser':
+                this.color = '#ff0000'; // Boss激光使用红色
+                this.glowColor = '#ff4444';
+                this.damage = 50;
+                this.setSize(60, 600); // 更粗的光束
+                this.penetration = Infinity; // 无限穿透
+                this.isBossLaser = true;
+                this.beamIntensity = 1;
+                this.beamPulse = 0;
+                this.maxAge = 3.0; // Boss激光持续3秒
+                break;
+
+            case 'shockwave':
+                this.color = '#ffff00'; // 黄色冲击波
+                this.glowColor = '#ffff88';
+                this.damage = 20; // Boss冲击波伤害20点
+                this.setSize(30, 30); // 较大的冲击波
+                this.rotationSpeed = 4;
+                this.pulseSpeed = 10;
                 break;
 
             default:
@@ -308,6 +338,18 @@ class Bullet extends GameObject {
     onUpdate(deltaTime) {
         this.animationTime += deltaTime;
         
+        // Boss激光特效更新
+        if (this.isBossLaser) {
+            this.beamPulse += deltaTime * 10;
+            this.beamIntensity = 0.8 + Math.sin(this.beamPulse) * 0.2;
+            
+            // 在生命周期的最后0.5秒添加渐隐效果
+            if (this.maxAge && this.age > this.maxAge - 0.5) {
+                const fadeTime = this.maxAge - this.age; // 剩余时间
+                this.alpha = Math.max(0, fadeTime / 0.5); // 0.5秒内从1渐变到0
+            }
+        }
+        
         // 激光光束特效更新
         if (this.isLaserBeam) {
             this.beamPulse += deltaTime * 10;
@@ -358,6 +400,13 @@ class Bullet extends GameObject {
         
         // 更新视觉效果
         this.updateVisualEffects(deltaTime);
+        
+        // 检查激光束生命周期
+        if (this.maxAge && this.age >= this.maxAge) {
+            console.log('激光束生命周期结束，销毁');
+            this.destroy();
+            return;
+        }
         
         // 边界检查
         this.checkBounds();
@@ -497,21 +546,6 @@ class Bullet extends GameObject {
      * 渲染子弹
      */
     onRender(ctx) {
-        ctx.save();
-        
-        // 应用透明度
-        ctx.globalAlpha = this.alpha;
-        
-        // 应用旋转
-        if (this.rotation) {
-            ctx.rotate(this.rotation);
-        }
-        
-        // 应用缩放
-        if (this.scale && this.scale !== 1) {
-            ctx.scale(this.scale, this.scale);
-        }
-        
         // 渲染拖尾
         this.renderTrail(ctx);
         
@@ -520,8 +554,6 @@ class Bullet extends GameObject {
         
         // 渲染发光效果
         this.renderGlow(ctx);
-        
-        ctx.restore();
     }
 
     /**
@@ -569,7 +601,13 @@ class Bullet extends GameObject {
         const halfWidth = this.width / 2;
         const halfHeight = this.height / 2;
         
-        // 激光光束特殊渲染
+        // Boss激光特殊渲染
+        if (this.isBossLaser) {
+            this.renderBossLaser(ctx, halfWidth, halfHeight);
+            return;
+        }
+        
+        // 玩家激光光束特殊渲染
         if (this.isLaserBeam) {
             this.renderLaserBeam(ctx, halfWidth, halfHeight);
             return;
@@ -605,9 +643,21 @@ class Bullet extends GameObject {
     renderLaserBeam(ctx, halfWidth, halfHeight) {
         ctx.save();
         
-        // 主光束
-        ctx.globalAlpha = this.beamIntensity;
-        const gradient = ctx.createLinearGradient(-halfWidth, 0, halfWidth, 0);
+        // 外发光
+        ctx.globalAlpha = 0.3;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 20;
+        const outerGradient = ctx.createLinearGradient(-halfWidth * 2, -halfHeight, halfWidth * 2, -halfHeight);
+        outerGradient.addColorStop(0, 'transparent');
+        outerGradient.addColorStop(0.3, this.glowColor);
+        outerGradient.addColorStop(0.7, this.glowColor);
+        outerGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = outerGradient;
+        ctx.fillRect(-halfWidth * 2, -halfHeight, halfWidth * 4, this.height);
+        
+        // 主光束 - 渐变效果
+        ctx.globalAlpha = this.beamIntensity * 0.8;
+        const gradient = ctx.createLinearGradient(-halfWidth, -halfHeight, halfWidth, -halfHeight);
         gradient.addColorStop(0, 'transparent');
         gradient.addColorStop(0.2, this.color);
         gradient.addColorStop(0.5, '#ffffff');
@@ -617,17 +667,22 @@ class Bullet extends GameObject {
         ctx.fillStyle = gradient;
         ctx.fillRect(-halfWidth, -halfHeight, this.width, this.height);
         
-        // 核心光束
+        // 核心光束 - 最亮的部分
         ctx.globalAlpha = 1;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(-halfWidth * 0.3, -halfHeight, halfWidth * 0.6, this.height);
         
-        // 外发光
-        ctx.globalAlpha = 0.5;
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 20;
+        // 中层光束
+        ctx.globalAlpha = 0.7;
         ctx.fillStyle = this.color;
-        ctx.fillRect(-halfWidth * 1.5, -halfHeight, halfWidth * 3, this.height);
+        ctx.fillRect(-halfWidth * 0.6, -halfHeight, halfWidth * 1.2, this.height);
+        
+        // 添加闪烁效果
+        if (Math.random() < 0.1) {
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-halfWidth * 0.4, -halfHeight + Math.random() * this.height * 0.8, halfWidth * 0.8, 5);
+        }
         
         ctx.restore();
     }
@@ -925,6 +980,44 @@ class Bullet extends GameObject {
      */
     getDamage() {
         return this.damage;
+    }
+
+    /**
+     * 渲染Boss激光（极简版本）
+     */
+    renderBossLaser(ctx, halfWidth, halfHeight) {
+        ctx.save();
+        
+        // 计算激光束的实际高度
+        let laserHeight = this.height;
+        let laserStartY = -halfHeight;
+        
+        // 如果有自定义的激光范围，使用它
+        if (this.laserStartY !== undefined && this.laserEndY !== undefined) {
+            laserHeight = this.laserEndY - this.laserStartY;
+            laserStartY = 0; // 从激光子弹位置开始渲染
+            if (this.type === 'boss_laser') {
+                laserHeight = this.laserEndY - this.position.y; // 从激光位置到屏幕底部
+            }
+        }
+        
+        // 极简化效果 - 只保留基本脉冲
+        const fadeAlpha = this.alpha || 1;
+        const pulseIntensity = 0.8 + Math.sin((this.age || 0) * 6) * 0.2; // 更低频率
+        
+        // 只渲染2层，最大化性能
+        
+        // 外层发光
+        ctx.globalAlpha = 0.15 * pulseIntensity * fadeAlpha;
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-halfWidth * 1.5, laserStartY, halfWidth * 3, laserHeight);
+        
+        // 核心光束
+        ctx.globalAlpha = 1.0 * fadeAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-halfWidth * 0.25, laserStartY, halfWidth * 0.5, laserHeight);
+        
+        ctx.restore();
     }
 }
 

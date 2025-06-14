@@ -453,6 +453,45 @@ class ParticleSystem {
     }
 
     /**
+     * 创建单个粒子（优化版本）
+     */
+    createParticle(config) {
+        // 直接使用爆炸效果，但减少粒子数量以提高性能
+        const emitter = this.createEmitter(1);
+        emitter.setPosition(config.x, config.y);
+        emitter.setLifeRange(config.life || 1.0, config.life || 1.0);
+        emitter.setSizeRange(config.size || 2, config.size || 2);
+        emitter.setColor(config.color.r, config.color.g, config.color.b);
+        emitter.setSpeedRange(0, 0); // 静止粒子
+        
+        // 设置自定义速度
+        if (config.vx !== undefined && config.vy !== undefined) {
+            // 手动创建粒子并设置速度
+            for (let particle of emitter.particles) {
+                if (!particle.active) {
+                    particle.init(
+                        config.x, 
+                        config.y, 
+                        config.vx, 
+                        config.vy, 
+                        config.life || 1.0, 
+                        config.size || 2, 
+                        config.color
+                    );
+                    break;
+                }
+            }
+        } else {
+            emitter.emitParticle();
+        }
+        
+        // 设置较短的自动移除时间
+        emitter.autoRemoveTime = (config.life || 1.0) + 0.1;
+        
+        return emitter;
+    }
+
+    /**
      * 清除所有粒子效果
      */
     clear() {

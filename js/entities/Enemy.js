@@ -106,7 +106,7 @@ class Enemy extends GameObject {
         switch (type) {
             case 'scout':
                 this.hp = this.maxHp = 1;
-                this.setSize(20, 20);
+                this.setSize(40, 40); // 原来是20x20，现在是2倍大小
                 this.baseSpeed = 150;
                 this.score = 10;
                 this.damage = 10; // 侦察机伤害10点
@@ -121,7 +121,7 @@ class Enemy extends GameObject {
                 
             case 'fighter':
                 this.hp = this.maxHp = 2;
-                this.setSize(25, 30);
+                this.setSize(50, 60); // 原来是25x30，现在是2倍大小
                 this.baseSpeed = 100;
                 this.score = 20;
                 this.damage = 20; // 战斗机伤害20点
@@ -136,7 +136,7 @@ class Enemy extends GameObject {
                 
             case 'heavy':
                 this.hp = this.maxHp = 5;
-                this.setSize(40, 40);
+                this.setSize(80, 80); // 原来是40x40，现在是2倍大小
                 this.baseSpeed = 60;
                 this.score = 50;
                 this.damage = 30; // 重型机伤害30点
@@ -152,7 +152,7 @@ class Enemy extends GameObject {
                 
             case 'elite':
                 this.hp = this.maxHp = 8;
-                this.setSize(35, 45);
+                this.setSize(70, 90); // 原来是35x45，现在是2倍大小
                 this.baseSpeed = 80;
                 this.score = 100;
                 this.damage = 40; // 精英机伤害40点
@@ -170,7 +170,7 @@ class Enemy extends GameObject {
 
             case 'interceptor':
                 this.hp = this.maxHp = 3;
-                this.setSize(28, 35);
+                this.setSize(56, 70); // 原来是28x35，现在是2倍大小
                 this.baseSpeed = 120;
                 this.score = 75;
                 this.damage = 25;
@@ -188,7 +188,7 @@ class Enemy extends GameObject {
 
             case 'bomber':
                 this.hp = this.maxHp = 6;
-                this.setSize(50, 35);
+                this.setSize(100, 70); // 原来是50x35，现在是2倍大小
                 this.baseSpeed = 40;
                 this.score = 150;
                 this.damage = 50;
@@ -204,7 +204,7 @@ class Enemy extends GameObject {
                 
             default: // basic
                 this.hp = this.maxHp = 1;
-                this.setSize(20, 25);
+                this.setSize(40, 50); // 原来是20x25，现在是2倍大小
                 this.baseSpeed = 120;
                 this.score = 10;
                 this.damage = 10; // 基础敌机伤害10点

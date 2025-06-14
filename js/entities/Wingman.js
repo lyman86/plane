@@ -9,8 +9,8 @@ class Wingman {
         this.targetPosition = new Vector2(0, 0);
         
         // 尺寸属性
-        this.width = 25;
-        this.height = 35;
+        this.width = 50; // 原来是25，现在是2倍大小
+        this.height = 70; // 原来是35，现在是2倍大小
         
         // 移动属性
         this.followSpeed = 300; // 跟随速度
@@ -44,13 +44,13 @@ class Wingman {
     setPosition(index) {
         this.positionIndex = index;
         
-        // 根据索引计算编队偏移
+        // 根据索引计算编队偏移（因为战机变大，间距也要增加）
         if (index === 0) {
             // 第一架僚机在左后方
-            this.formationOffset = { x: -50, y: 40 };
+            this.formationOffset = { x: -100, y: 80 }; // 原来是-50, 40，现在是2倍距离
         } else if (index === 1) {
             // 第二架僚机在右后方
-            this.formationOffset = { x: 50, y: 40 };
+            this.formationOffset = { x: 100, y: 80 }; // 原来是50, 40，现在是2倍距离
         }
         
         // 设置射击延迟，避免同时射击

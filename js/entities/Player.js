@@ -6,19 +6,40 @@ class Player extends GameObject {
         super(x, y);
         
         // 玩家属性
-        this.setSize(40, 60);
+        this.setSize(72, 107); // 缩小为原来的0.8倍面积 (80*0.894≈72, 120*0.894≈107)
         this.collisionType = 'rectangle';
         this.maxSpeed = 250;
         this.color = '#00ff00';
         
         // 血量系统 - 根据配置设置
-        const gameConfig = window.game?.config || { playerLives: 1 };
         this.maxHp = 100; // 每条命100点血量
         this.hp = this.maxHp; // 当前血量
         
         // 生命值系统 - 根据设置配置
-        this.maxLives = gameConfig.playerLives;
+        // 优先从game配置中读取，如果没有则从localStorage读取，最后使用默认值
+        let playerLives = 1; // 默认值
+        
+        try {
+            if (window.game?.config?.playerLives) {
+                playerLives = window.game.config.playerLives;
+            } else {
+                // 尝试从localStorage读取设置
+                const savedSettings = localStorage.getItem('planewar_settings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    if (settings.playerLives) {
+                        playerLives = parseInt(settings.playerLives);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('读取生命数量设置失败，使用默认值1条命:', error);
+        }
+        
+        this.maxLives = playerLives;
         this.lives = this.maxLives;
+        console.log(`玩家创建: ${this.maxLives}条命，每条命${this.maxHp}血量`);
+        
         this.invulnerable = false;
         this.invulnerabilityTime = 2; // 无敌时间（秒）
         this.invulnerabilityTimer = 0;
@@ -214,14 +235,86 @@ class Player extends GameObject {
             this.velocity.x = 0;
         }
         
-        // 垂直边界
-        if (this.position.y < margin) {
-            this.position.y = margin;
+        // 垂直边界 - 基本的屏幕边界
+        const topLimit = margin;
+        const bottomLimit = this.canvasHeight - margin;
+        
+        if (this.position.y < topLimit) {
+            this.position.y = topLimit;
             this.velocity.y = 0;
-        } else if (this.position.y > this.canvasHeight - margin) {
-            this.position.y = this.canvasHeight - margin;
+        } else if (this.position.y > bottomLimit) {
+            this.position.y = bottomLimit;
             this.velocity.y = 0;
         }
+        
+        // Boss区域碰撞检测 - 边界阻挡模式
+        if (window.game?.boss?.active && !window.game.boss.isDead()) {
+            const boss = window.game.boss;
+            this.handleBossBoundaryCollision(boss);
+        }
+    }
+    
+    /**
+     * 处理Boss边界碰撞 - 边界阻挡模式
+     */
+    handleBossBoundaryCollision(boss) {
+        const bossBounds = boss.getCollisionBounds();
+        const safeDistance = 2; // 安全距离
+        
+        // 计算Boss边界的扩展区域（加上安全距离）
+        const bossLeft = bossBounds.left - safeDistance;
+        const bossRight = bossBounds.right + safeDistance;
+        const bossTop = bossBounds.top - safeDistance;
+        const bossBottom = bossBounds.bottom + safeDistance;
+        
+        // 计算玩家的边界
+        const playerLeft = this.position.x - this.width / 2;
+        const playerRight = this.position.x + this.width / 2;
+        const playerTop = this.position.y - this.height / 2;
+        const playerBottom = this.position.y + this.height / 2;
+        
+        // 检查各个方向的边界碰撞并阻挡移动
+        
+        // 左边界阻挡：玩家从左侧向右移动时
+        if (this.velocity.x > 0 && playerRight >= bossLeft && playerLeft < bossLeft &&
+            playerBottom > bossTop && playerTop < bossBottom) {
+            this.position.x = bossLeft - this.width / 2;
+            this.velocity.x = 0;
+        }
+        
+        // 右边界阻挡：玩家从右侧向左移动时
+        if (this.velocity.x < 0 && playerLeft <= bossRight && playerRight > bossRight &&
+            playerBottom > bossTop && playerTop < bossBottom) {
+            this.position.x = bossRight + this.width / 2;
+            this.velocity.x = 0;
+        }
+        
+        // 上边界阻挡：玩家从上方向下移动时
+        if (this.velocity.y > 0 && playerBottom >= bossTop && playerTop < bossTop &&
+            playerRight > bossLeft && playerLeft < bossRight) {
+            this.position.y = bossTop - this.height / 2;
+            this.velocity.y = 0;
+        }
+        
+        // 下边界阻挡：玩家从下方向上移动时
+        if (this.velocity.y < 0 && playerTop <= bossBottom && playerBottom > bossBottom &&
+            playerRight > bossLeft && playerLeft < bossRight) {
+            this.position.y = bossBottom + this.height / 2;
+            this.velocity.y = 0;
+        }
+    }
+
+    /**
+     * 检查玩家是否与Boss重叠 - 用于其他系统
+     */
+    isOverlappingWithBoss(boss) {
+        const playerBounds = this.getBounds();
+        const bossBounds = boss.getCollisionBounds();
+        
+        return !(playerBounds.right < bossBounds.left || 
+                playerBounds.left > bossBounds.right ||
+                playerBounds.bottom < bossBounds.top || 
+                playerBounds.top > bossBounds.bottom);
     }
 
     /**
@@ -916,6 +1009,16 @@ class Player extends GameObject {
         
         // 绘制武器等级指示器
         this.drawWeaponIndicator(ctx);
+        
+        // 调试：绘制碰撞边界
+        if (window.game?.showCollisionBounds) {
+            this.drawCollisionBounds(ctx);
+        }
+        
+        // 调试边界可视化
+        if (this.showDebugBounds) {
+            this.renderDebugBounds(ctx);
+        }
 
         // 渲染僚机
         this.renderWingmen(ctx);
@@ -1122,6 +1225,48 @@ class Player extends GameObject {
     }
 
     /**
+     * 绘制碰撞边界（调试用）
+     */
+    drawCollisionBounds(ctx) {
+        const bounds = this.getBounds();
+        const width = bounds.right - bounds.left;
+        const height = bounds.bottom - bounds.top;
+        
+        ctx.save();
+        ctx.strokeStyle = '#ff00ff'; // 粉红色边界
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.7;
+        ctx.strokeRect(-width / 2, -height / 2, width, height);
+        
+        // 绘制中心点
+        ctx.fillStyle = '#ff00ff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+
+    /**
+     * 获取碰撞边界 - 缩小碰撞面积为原来的一半
+     * @returns {Object} 边界框 {left, right, top, bottom, centerX, centerY}
+     */
+    getBounds() {
+        // 缩小碰撞面积为原来的一半，以中心为原点
+        const halfWidth = (this.width / 2) / 2; // 宽度缩小一半
+        const halfHeight = (this.height / 2) / 2; // 高度缩小一半
+        
+        return {
+            left: this.position.x - halfWidth,
+            right: this.position.x + halfWidth,
+            top: this.position.y - halfHeight,
+            bottom: this.position.y + halfHeight,
+            centerX: this.position.x,
+            centerY: this.position.y
+        };
+    }
+
+    /**
      * 碰撞处理
      */
     onCollision(other) {
@@ -1130,7 +1275,7 @@ class Player extends GameObject {
             this.takeDamage(other.damage || 10);
         } else if (other instanceof Bullet) {
             // 检查是否为敌机子弹
-            const enemyBulletTypes = ['enemy', 'heavy_bullet', 'elite_bullet', 'interceptor_bullet', 'bomb'];
+            const enemyBulletTypes = ['enemy', 'heavy_bullet', 'elite_bullet', 'interceptor_bullet', 'bomb', 'enemyBoss', 'boss_laser'];
             if (enemyBulletTypes.includes(other.type)) {
                 // 敌机子弹伤害
                 this.takeDamage(other.getDamage());
@@ -1171,11 +1316,31 @@ class Player extends GameObject {
      */
     reset() {
         // 根据当前游戏配置重新设置生命数量
-        const gameConfig = window.game?.config || { playerLives: 1 };
-        this.maxLives = gameConfig.playerLives;
+        let playerLives = 1; // 默认值
+        
+        try {
+            if (window.game?.config?.playerLives) {
+                playerLives = window.game.config.playerLives;
+            } else {
+                // 尝试从localStorage读取设置
+                const savedSettings = localStorage.getItem('planewar_settings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    if (settings.playerLives) {
+                        playerLives = parseInt(settings.playerLives);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('重置时读取生命数量设置失败，使用默认值1条命:', error);
+        }
+        
+        this.maxLives = playerLives;
         
         this.hp = this.maxHp; // 重置血量
         this.lives = this.maxLives;
+        console.log(`玩家重置: ${this.maxLives}条命，每条命${this.maxHp}血量`);
+        
         this.score = 0;
         this.killCount = 0;
         this.weaponLevel = 1;
@@ -1194,6 +1359,31 @@ class Player extends GameObject {
         this.velocity.set(0, 0);
         
         this.updateUI();
+    }
+
+    /**
+     * 渲染调试边界（特殊标记）
+     */
+    renderDebugBounds(ctx) {
+        const bounds = this.getBounds();
+        
+        ctx.save();
+        ctx.strokeStyle = '#00ff00'; // 绿色表示玩家边界
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        
+        const width = bounds.right - bounds.left;
+        const height = bounds.bottom - bounds.top;
+        
+        ctx.strokeRect(-width / 2, -height / 2, width, height);
+        
+        // 在边界上添加标签
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('玩家碰撞边界', -width / 2, -height / 2 - 5);
+        
+        ctx.restore();
     }
 
     /**
